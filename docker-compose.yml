@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: pg_task1
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - data_net
+
+  # --- STUBS to extend later ---
+  # kafka:
+  #   image: confluentinc/cp-kafka:7.4.0
+  #   ...
+  # debezium:
+  #   image: debezium/connect:2.2
+  #   ...
+  # spark:
+  #   image: bitnami/spark:latest
+  #   ...
+  # minio:
+  #   image: minio/minio:latest
+  #   ...
+  # ------------------------------
+
+volumes:
+  pgdata:
+
+networks:
+  data_net:
+    driver: bridge
