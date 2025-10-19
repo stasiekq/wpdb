@@ -1,0 +1,17 @@
+{
+  "name": "postgres-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "database.hostname": "postgres",
+    "database.port": "5432",
+    "database.user": "pguser",
+    "database.password": "admin",
+    "database.dbname": "business_db",
+    "database.server.name": "wpdb",
+    "table.include.list": "public.data1",
+    "plugin.name": "pgoutput",
+    "topic.prefix": "wpdb",
+    "slot.name": "debezium_slot",
+    "publication.autocreate.mode": "filtered"
+  }
+}

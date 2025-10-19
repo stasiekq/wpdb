@@ -68,17 +68,12 @@ def create_table(conn, table_name: str, df: pd.DataFrame):
 
 
 def copy_df_to_table(conn, table_name: str, df: pd.DataFrame):
-    buffer = StringIO()
-    # export bez naglowkow, COPY bedzie uzywal listy kolumn
-    df.to_csv(buffer, index=False, header=False)
-    buffer.seek(0)
     with conn.cursor() as cur:
-        cols = [sql.Identifier(c) for c in df.columns]
-        copy_sql = sql.SQL("COPY {} ({}) FROM STDIN WITH CSV").format(
-            sql.Identifier(table_name),
-            sql.SQL(', ').join(cols)
-        )
-        cur.copy_expert(copy_sql, buffer)
+        for _, row in df.iterrows():
+            placeholders = ', '.join(['%s'] * len(row))
+            columns = ', '.join(row.index)
+            sql_str = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"
+            cur.execute(sql_str, tuple(row))
     conn.commit()
 
 
