@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 load_dotenv()  # wczytuje .env jesli jest
 
 DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = os.getenv("DB_PORT", "5432")
+DB_PORT = os.getenv("DB_PORT", "5433")
 DB_NAME = os.getenv("POSTGRES_DB", "business_db")
 DB_USER = os.getenv("POSTGRES_USER", "pguser")
 DB_PASS = os.getenv("POSTGRES_PASSWORD", "admin")
