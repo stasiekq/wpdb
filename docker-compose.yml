@@ -17,20 +17,6 @@ services:
     networks:
       - data_net
 
-  # --- STUBS to extend later ---
-  # kafka:
-  #   image: confluentinc/cp-kafka:7.4.0
-  #   ...
-  # debezium:
-  #   image: debezium/connect:2.2
-  #   ...
-  # spark:
-  #   image: bitnami/spark:latest
-  #   ...
-  # minio:
-  #   image: minio/minio:latest
-  #   ...
-  # ------------------------------
 
 volumes:
   pgdata:
@@ -38,3 +24,4 @@ volumes:
 networks:
   data_net:
     driver: bridge
+  
