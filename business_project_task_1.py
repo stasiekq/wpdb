@@ -33,22 +33,14 @@ TYPE_MAP = {
 'object': 'TEXT'
 }
 
-
-
-
 def infer_sql_type(pd_series: pd.Series) -> str:
     dtype = str(pd_series.dtype)
     return TYPE_MAP.get(dtype, 'TEXT')
-
-
-
 
 def table_name_from_filename(fname: str) -> str:
     base = os.path.splitext(os.path.basename(fname))[0]
     # usun niebezpieczne znaki, zamien na underscore
     return ''.join(c if c.isalnum() else '_' for c in base).lower()
-
-
 
 def create_table(conn, table_name: str, df: pd.DataFrame):
 # build column defs safely using psycopg2.sql
@@ -65,8 +57,6 @@ def create_table(conn, table_name: str, df: pd.DataFrame):
         cur.execute(query)
     conn.commit()
 
-
-
 def copy_df_to_table(conn, table_name: str, df: pd.DataFrame):
     with conn.cursor() as cur:
         for _, row in df.iterrows():
@@ -76,16 +66,12 @@ def copy_df_to_table(conn, table_name: str, df: pd.DataFrame):
             cur.execute(sql_str, tuple(row))
     conn.commit()
 
-
-
-
 def find_csv_files(data_dir: str, max_files: int = 3) -> List[str]:
     if not os.path.isdir(data_dir):
         return []
     files = [os.path.join(data_dir, f) for f in os.listdir(data_dir) if f.lower().endswith('.csv')]
     files.sort()
     return files[:max_files]
-
 
 def process_csv_list(file_list: List[str]):
     if not file_list:
@@ -112,7 +98,6 @@ def process_csv_list(file_list: List[str]):
     finally:
         conn.close()
 
-
 if __name__ == '__main__':
     # mozna podac pliki jako argumenty: python business_process_task1.py data/a.csv data/b.csv data/c.csv
     if len(sys.argv) > 1:
@@ -128,6 +113,7 @@ if __name__ == '__main__':
     try:
         process_csv_list(files)
         print("Zakonczono przetwarzanie.")
+        exit(0)
     except Exception as e:
         print("Blad podczas przetwarzania:", e)
         sys.exit(1)
