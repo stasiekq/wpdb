@@ -1,0 +1,10 @@
+docker compose down -v
+docker compose up -d
+
+curl -X DELETE http://localhost:8083/connectors/postgres-connector
+
+curl -X POST -H "Content-Type: application/json" \
+  --data @register_postgres.json \
+  http://localhost:8083/connectors
+
+curl http://localhost:8083/connectors/postgres-connector/status
