@@ -33,5 +33,5 @@ echo "If no data appears, try inserting data into PostgreSQL to generate CDC eve
 echo ""
 docker exec spark /opt/spark/bin/spark-submit \
   --master spark://spark:7077 \
-  /opt/spark/apps/spark_job.py
+  /opt/spark/apps/spark_streaming.py
 

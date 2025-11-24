@@ -145,9 +145,9 @@ DATA_DIR=data
     
     # Step 8: Run Task 1 - Load CSV data
     print_step(8, "Executing Task 1: Loading CSV data into PostgreSQL")
-    print("Running: python3 business_project_task_1.py")
+    print("Running: python3 src/task1/csv_loader.py")
     print("-" * 50)
-    result = run_command(["python3", "business_project_task_1.py"])
+    result = run_command(["python3", "src/task1/csv_loader.py"])
     if result != 0:
         print(f"ERROR: Task 1 failed with exit code {result}")
         sys.exit(1)
@@ -174,7 +174,7 @@ DATA_DIR=data
     print_step(10, "Registering Debezium PostgreSQL connector")
     print("POST http://localhost:8083/connectors")
     print("Payload:")
-    with open("register_postgres.json", "r") as f:
+    with open("config/debezium/postgres_connector.json", "r") as f:
         payload = json.load(f)
         print(json.dumps(payload, indent=2))
     print()
@@ -183,7 +183,7 @@ DATA_DIR=data
         'curl -i -X POST http://localhost:8083/connectors '
         '-H "Accept:application/json" '
         '-H "Content-Type:application/json" '
-        '-d @register_postgres.json',
+        '-d @config/debezium/postgres_connector.json',
         shell=True
     )
     print()
@@ -281,7 +281,7 @@ DATA_DIR=data
     
     # Step 16: Test AVRO consumer (briefly)
     print_step(16, "Testing AVRO consumer (5 seconds)")
-    print("Running: python3 consumer_avro.py")
+    print("Running: python3 src/task3/avro_consumer.py")
     print("-" * 50)
     try:
         # Use signal-based timeout for cross-platform compatibility
@@ -296,7 +296,7 @@ DATA_DIR=data
             signal.alarm(5)
             try:
                 result = run_command(
-                    ["python3", "consumer_avro.py"],
+                    ["python3", "src/task3/avro_consumer.py"],
                     capture_output=True
                 )
                 signal.alarm(0)  # Cancel alarm
@@ -310,7 +310,7 @@ DATA_DIR=data
         else:
             # Windows/fallback: just run without timeout
             result = run_command(
-                ["python3", "consumer_avro.py"],
+                ["python3", "src/task3/avro_consumer.py"],
                 capture_output=True
             )
             if result[0]:
@@ -398,7 +398,7 @@ DATA_DIR=data
     print('   docker exec -it pg_task1 psql -U pguser -d business_db -c "INSERT INTO data1 (key, value) VALUES (\'test\', \'value\');"')
     print()
     print("2. Run Spark job to process stream:")
-    print("   ./run_spark_job.sh")
+    print("   ./scripts/run_spark_job.sh")
     print()
     print("3. Monitor Spark UI:")
     print("   http://localhost:8080")

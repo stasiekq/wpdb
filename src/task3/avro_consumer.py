@@ -15,7 +15,7 @@ def main():
 
     consumer = Consumer(consumer_conf)
 
-    topic = "wpdb.public.data1"
+    topic = "pg.public.data1"
     consumer.subscribe([topic])
 
     print("Consumer AVRO start...")

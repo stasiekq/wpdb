@@ -77,7 +77,7 @@ echo -e "${GREEN}Debezium is ready${NC}"
 
 # Step 8: Run Task 1 - Load data into PostgreSQL
 echo -e "\n${YELLOW}Step 8: Running Task 1 - Loading CSV data into PostgreSQL...${NC}"
-python3 business_project_task_1.py
+python3 src/task1/csv_loader.py
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}Task 1 completed successfully${NC}"
 else
@@ -126,7 +126,7 @@ echo -e "\n${YELLOW}Step 9: Registering Debezium PostgreSQL connector...${NC}"
 curl -i -X POST http://localhost:8083/connectors \
   -H "Accept:application/json" \
   -H "Content-Type:application/json" \
-  -d @register_postgres.json
+  -d @config/debezium/postgres_connector.json
 
 sleep 5
 
@@ -159,7 +159,7 @@ fi
 # Step 11: Test AVRO consumer (run in background for a few seconds)
 echo -e "\n${YELLOW}Step 11: Testing AVRO consumer (will run for 10 seconds)...${NC}"
 echo "You can also run this manually: python3 consumer_avro.py"
-timeout 10 python3 consumer_avro.py || true
+timeout 10 python3 src/task3/avro_consumer.py || true
 
 # Step 12: Verify Spark (Task 4)
 echo -e "\n${YELLOW}Step 12: Verifying Task 4 - Spark setup...${NC}"
@@ -180,17 +180,17 @@ else
 fi
 
 # Check Spark job file exists
-if [ -f "spark_job.py" ]; then
-    echo -e "${GREEN}✓ Spark job script (spark_job.py) exists${NC}"
+if [ -f "src/task4/spark_streaming.py" ]; then
+    echo -e "${GREEN}✓ Spark job script (src/task4/spark_streaming.py) exists${NC}"
     # Basic syntax check
-    if python3 -m py_compile spark_job.py 2>/dev/null; then
+    if python3 -m py_compile src/task4/spark_streaming.py 2>/dev/null; then
         echo -e "${GREEN}✓ Spark job script syntax is valid${NC}"
     else
         echo -e "${RED}✗ Spark job script has syntax errors${NC}"
         exit 1
     fi
 else
-    echo -e "${RED}✗ Spark job script (spark_job.py) not found${NC}"
+    echo -e "${RED}✗ Spark job script (src/task4/spark_streaming.py) not found${NC}"
     exit 1
 fi
 
@@ -202,10 +202,10 @@ echo "Method 1: Submit job to Spark cluster"
 echo "  docker exec -it spark /opt/spark/bin/spark-submit \\"
 echo "    --master spark://spark:7077 \\"
 echo "    --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0 \\"
-echo "    /opt/spark/apps/spark_job.py"
+echo "    /opt/spark/apps/spark_streaming.py"
 echo ""
 echo "Method 2: Run Spark job locally (if you have Spark installed)"
-echo "  python3 spark_job.py"
+echo "  python3 src/task4/spark_streaming.py"
 echo ""
 echo "Method 3: Access Spark UI"
 echo "  Open browser: http://localhost:8080"
@@ -245,6 +245,7 @@ echo ""
 echo "Next steps:"
 echo "1. Make some changes to PostgreSQL to generate CDC events:"
 echo "   docker exec -it pg_task1 psql -U pguser -d business_db -c \"INSERT INTO data1 (key, value) VALUES ('test', 'value');\""
-echo "2. Run the Spark job to process the stream"
+echo "2. Run the Spark job to process the stream:"
+echo "   ./scripts/run_spark_job.sh"
 echo "3. Check Spark UI at http://localhost:8080"
 

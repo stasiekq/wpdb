@@ -90,9 +90,9 @@ echo ""
 
 # Step 8: Run Task 1 - Load CSV data
 echo "[STEP 8] Executing Task 1: Loading CSV data into PostgreSQL..."
-echo "Running: python3 business_project_task_1.py"
+echo "Running: python3 src/task1/csv_loader.py"
 echo "----------------------------------------"
-python3 business_project_task_1.py
+python3 src/task1/csv_loader.py
 echo "----------------------------------------"
 echo "Task 1 completed"
 echo ""
@@ -110,13 +110,13 @@ echo ""
 echo "[STEP 10] Registering Debezium PostgreSQL connector..."
 echo "POST http://localhost:8083/connectors"
 echo "Payload:"
-cat register_postgres.json | python3 -m json.tool
+cat config/debezium/postgres_connector.json | python3 -m json.tool
 echo ""
 echo "Response:"
 curl -i -X POST http://localhost:8083/connectors \
   -H "Accept:application/json" \
   -H "Content-Type:application/json" \
-  -d @register_postgres.json
+  -d @config/debezium/postgres_connector.json
 echo ""
 echo "Waiting 5 seconds for connector to initialize..."
 sleep 5
@@ -163,9 +163,9 @@ echo ""
 
 # Step 16: Test AVRO consumer (briefly)
 echo "[STEP 16] Testing AVRO consumer (5 seconds)..."
-echo "Running: python3 consumer_avro.py"
+echo "Running: python3 src/task3/avro_consumer.py"
 echo "----------------------------------------"
-timeout 5 python3 consumer_avro.py 2>&1 || true
+timeout 5 python3 src/task3/avro_consumer.py 2>&1 || true
 echo "----------------------------------------"
 echo ""
 
@@ -215,7 +215,7 @@ echo "1. Generate CDC events by inserting data:"
 echo "   docker exec -it pg_task1 psql -U pguser -d business_db -c \"INSERT INTO data1 (key, value) VALUES ('test', 'value');\""
 echo ""
 echo "2. Run Spark job to process stream:"
-echo "   ./run_spark_job.sh"
+echo "   ./scripts/run_spark_job.sh"
 echo ""
 echo "3. Monitor Spark UI:"
 echo "   http://localhost:8080"
