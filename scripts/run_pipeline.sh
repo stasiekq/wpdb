@@ -88,8 +88,20 @@ echo "Debezium logs (last 10 lines):"
 docker logs debezium --tail 10
 echo ""
 
-# Step 8: Run Task 1 - Load CSV data
-echo "[STEP 8] Executing Task 1: Loading CSV data into PostgreSQL..."
+# Step 8: Wait for MinIO
+echo "[STEP 8] Waiting for MinIO..."
+until curl -s http://localhost:9000/minio/health/live > /dev/null 2>&1; do
+    echo -n "."
+    sleep 1
+done
+echo " MinIO is ready"
+echo ""
+echo "MinIO logs (last 10 lines):"
+docker logs minio --tail 10
+echo ""
+
+# Step 9: Run Task 1 - Load CSV data
+echo "[STEP 9] Executing Task 1: Loading CSV data into PostgreSQL..."
 echo "Running: python3 src/task1/csv_loader.py"
 echo "----------------------------------------"
 python3 src/task1/csv_loader.py
@@ -97,8 +109,8 @@ echo "----------------------------------------"
 echo "Task 1 completed"
 echo ""
 
-# Step 9: Show PostgreSQL tables
-echo "[STEP 9] Verifying data in PostgreSQL..."
+# Step 10: Show PostgreSQL tables
+echo "[STEP 10] Verifying data in PostgreSQL..."
 echo "Tables created:"
 docker exec pg_task1 psql -U pguser -d business_db -c "\dt" 2>&1
 echo ""
@@ -106,8 +118,8 @@ echo "Sample data from data1:"
 docker exec pg_task1 psql -U pguser -d business_db -c "SELECT * FROM data1 LIMIT 5;" 2>&1
 echo ""
 
-# Step 10: Register Debezium connector
-echo "[STEP 10] Registering Debezium PostgreSQL connector..."
+# Step 11: Register Debezium connector
+echo "[STEP 11] Registering Debezium PostgreSQL connector..."
 echo "POST http://localhost:8083/connectors"
 echo "Payload:"
 cat config/debezium/postgres_connector.json | python3 -m json.tool
@@ -122,23 +134,23 @@ echo "Waiting 5 seconds for connector to initialize..."
 sleep 5
 echo ""
 
-# Step 11: Check connector status
-echo "[STEP 11] Debezium connector status:"
+# Step 12: Check connector status
+echo "[STEP 12] Debezium connector status:"
 curl -s http://localhost:8083/connectors/postgres-connector/status | python3 -m json.tool
 echo ""
 
-# Step 12: Show Debezium logs after connector registration
+# Step 13: Show Debezium logs after connector registration
 echo "Debezium logs after connector registration (last 20 lines):"
 docker logs debezium --tail 20
 echo ""
 
-# Step 13: Check Kafka topics
-echo "[STEP 13] Kafka topics created by Debezium:"
+# Step 14: Check Kafka topics
+echo "[STEP 14] Kafka topics created by Debezium:"
 docker exec kafka kafka-topics --bootstrap-server localhost:9092 --list
 echo ""
 
-# Step 14: Check Schema Registry schemas
-echo "[STEP 14] Schema Registry - Registered schemas:"
+# Step 15: Check Schema Registry schemas
+echo "[STEP 15] Schema Registry - Registered schemas:"
 SCHEMAS=$(curl -s http://localhost:8081/subjects)
 if [ -n "$SCHEMAS" ] && [ "$SCHEMAS" != "[]" ]; then
     echo "$SCHEMAS" | python3 -m json.tool
@@ -153,24 +165,24 @@ else
 fi
 echo ""
 
-# Step 15: Show Kafka message count
-echo "[STEP 15] Checking Kafka message counts:"
+# Step 16: Show Kafka message count
+echo "[STEP 16] Checking Kafka message counts:"
 for topic in pg.public.data1 pg.public.data2 pg.public.data3; do
     COUNT=$(docker exec kafka kafka-run-class kafka.tools.GetOffsetShell --broker-list localhost:9092 --topic "$topic" 2>/dev/null | awk -F: '{sum += $3} END {print sum+0}' || echo "0")
     echo "  $topic: $COUNT messages"
 done
 echo ""
 
-# Step 16: Test AVRO consumer (briefly)
-echo "[STEP 16] Testing AVRO consumer (5 seconds)..."
+# Step 17: Test AVRO consumer (briefly)
+echo "[STEP 17] Testing AVRO consumer (5 seconds)..."
 echo "Running: python3 src/task3/avro_consumer.py"
 echo "----------------------------------------"
 timeout 5 python3 src/task3/avro_consumer.py 2>&1 || true
 echo "----------------------------------------"
 echo ""
 
-# Step 17: Check Spark status
-echo "[STEP 17] Spark cluster status:"
+# Step 18: Check Spark status
+echo "[STEP 18] Spark cluster status:"
 if docker ps | grep -q "spark.*Up"; then
     echo "Spark master: Running"
     echo "Spark UI: http://localhost:8080"
@@ -188,8 +200,8 @@ else
 fi
 echo ""
 
-# Step 18: Show current state summary
-echo "[STEP 18] Pipeline State Summary:"
+# Step 19: Show current state summary
+echo "[STEP 19] Pipeline State Summary:"
 echo "----------------------------------------"
 echo "PostgreSQL:"
 docker exec pg_task1 psql -U pguser -d business_db -c "SELECT COUNT(*) as row_count, 'data1' as table_name FROM data1 UNION ALL SELECT COUNT(*), 'data2' FROM data2 UNION ALL SELECT COUNT(*), 'data3' FROM data3;" 2>&1
@@ -207,20 +219,35 @@ echo "Schema Registry:"
 SCHEMA_COUNT=$(curl -s http://localhost:8081/subjects | python3 -c "import sys, json; print(len(json.load(sys.stdin)))" 2>/dev/null || echo "0")
 echo "  Registered schemas: $SCHEMA_COUNT"
 echo ""
+echo "MinIO:"
+if curl -s http://localhost:9000/minio/health/live > /dev/null 2>&1; then
+    echo "  Status: Healthy"
+    echo "  Console: http://localhost:9001 (minioadmin/minioadmin)"
+else
+    echo "  Status: Unavailable"
+fi
+echo ""
 
-# Step 19: Instructions for next steps
-echo "[STEP 19] Next Steps:"
+# Step 20: Instructions for next steps
+echo "[STEP 20] Next Steps:"
 echo "----------------------------------------"
 echo "1. Generate CDC events by inserting data:"
 echo "   docker exec -it pg_task1 psql -U pguser -d business_db -c \"INSERT INTO data1 (key, value) VALUES ('test', 'value');\""
 echo ""
-echo "2. Run Spark job to process stream:"
+echo "2. Run Spark streaming job (Task 4) to process stream:"
 echo "   ./scripts/run_spark_job.sh"
 echo ""
-echo "3. Monitor Spark UI:"
+echo "3. Run Spark Delta Lake job (Task 5) to write to MinIO:"
+echo "   ./scripts/run_spark_delta_job.sh"
+echo ""
+echo "4. Monitor Spark UI:"
 echo "   http://localhost:8080"
 echo ""
-echo "4. View real-time logs:"
+echo "5. View MinIO console and Delta data:"
+echo "   http://localhost:9001  (minioadmin / minioadmin)"
+echo "   docker exec spark /opt/spark/bin/spark-submit --master spark://spark:7077 --packages io.delta:delta-spark_2.12:3.0.0 /opt/spark/apps/read_delta.py"
+echo ""
+echo "6. View real-time logs:"
 echo "   docker logs -f <container-name>"
 echo ""
 

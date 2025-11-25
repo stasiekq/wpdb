@@ -33,9 +33,22 @@ wpdb/
    python3 scripts/run_pipeline.py
    ```
 
-3. **Run Spark job:**
+3. **Run Spark streaming job (Task 4):**
    ```bash
    ./scripts/run_spark_job.sh
+   ```
+
+4. **Run Spark Delta Lake job (Task 5):**
+   ```bash
+   ./scripts/run_spark_delta_job.sh
+   ```
+
+5. **Read Delta Lake data:**
+   ```bash
+   docker exec spark /opt/spark/bin/spark-submit \
+     --master spark://spark:7077 \
+     --packages io.delta:delta-spark_2.12:3.0.0 \
+     /opt/spark/apps/read_delta.py
    ```
 
 ## Components
@@ -56,6 +69,12 @@ wpdb/
 ### Task 4: Spark Processing
 - **Job:** `src/task4/spark_streaming.py`
 - Processes Kafka streams with transformations
+- Outputs to console/file for monitoring
+
+### Task 5: Delta Lake Storage
+- **Job:** `src/task5/spark_delta_writer.py`
+- Writes processed data to MinIO in Delta Lake format
+- **Read Script:** `src/task5/read_delta.py` - Read and query Delta tables
 
 ## Services
 
@@ -64,19 +83,25 @@ wpdb/
 - **Schema Registry:** `localhost:8081`
 - **Debezium:** `localhost:8083`
 - **Spark Master UI:** `http://localhost:8080`
+- **MinIO Console:** `http://localhost:9001` (minioadmin/minioadmin)
+- **MinIO S3 API:** `http://localhost:9000`
 
 ## Documentation
 
 - [Requirements](docs/requirements.md) - Project requirements
+- [Deployment Guide](docs/deployment.md) - Complete platform deployment from scratch (Tasks 1-6)
 - [Quick Start Guide](docs/quick_start.md) - Detailed setup instructions
 - [Requirements Checklist](docs/requirements_checklist.md) - Verification checklist
 - [Spark Troubleshooting](docs/spark_troubleshooting.md) - Spark job issues and fixes
+- [MinIO Guide](docs/minio_guide.md) - How to retrieve data from MinIO Delta Lake
 
 ## Scripts
 
 - `scripts/run_pipeline.sh` / `scripts/run_pipeline.py` - Execute full pipeline
 - `scripts/test_setup.sh` - Test and verify setup
-- `scripts/run_spark_job.sh` - Run Spark streaming job
+- `scripts/run_spark_job.sh` - Run Spark streaming job (Task 4)
+- `scripts/run_spark_delta_job.sh` - Run Spark Delta Lake job (Task 5)
+- `scripts/run_full_pipeline.sh` - Run full end-to-end pipeline (Tasks 1-5) with background Spark jobs and Delta snapshot
 
 ## Utilities
 

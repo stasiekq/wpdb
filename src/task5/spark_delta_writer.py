@@ -4,18 +4,15 @@ Reads AVRO messages from Kafka, performs transformations, and writes to MinIO in
 """
 
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, current_timestamp, unix_timestamp
+from pyspark.sql.functions import col, current_timestamp, unix_timestamp, split
 from pyspark.sql.types import StructType
 import os
 
-# Initialize Spark Session with S3 support but WITHOUT Delta extension/catalog to avoid serialization issues
-# We'll configure Delta only for writes in foreachBatch using format("delta")
-# Delta Lake JARs are provided via --jars in spark-submit command
-# Note: NOT setting Delta extension/catalog here to avoid serialization issues during read phase
+# Initialize Spark Session with Delta Lake and S3 (MinIO) support
 spark = SparkSession.builder \
     .appName("KafkaToDeltaMinIO") \
-    .config("spark.driver.extraClassPath", "/opt/spark/jars/delta-spark_2.12-3.0.0.jar:/opt/spark/jars/delta-storage-3.0.0.jar:/opt/spark/jars/hadoop-aws-3.3.4.jar:/opt/spark/jars/aws-java-sdk-bundle-1.12.262.jar") \
-    .config("spark.executor.extraClassPath", "/opt/spark/jars/delta-spark_2.12-3.0.0.jar:/opt/spark/jars/delta-storage-3.0.0.jar:/opt/spark/jars/hadoop-aws-3.3.4.jar:/opt/spark/jars/aws-java-sdk-bundle-1.12.262.jar") \
+    .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \
+    .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog") \
     .config("spark.hadoop.fs.s3a.endpoint", "http://minio:9000") \
     .config("spark.hadoop.fs.s3a.access.key", "minioadmin") \
     .config("spark.hadoop.fs.s3a.secret.key", "minioadmin") \
@@ -75,10 +72,10 @@ transformed_df = stream_df.select(
     current_timestamp().alias("processing_timestamp")
 )
 
-# Transformation 1: Extract table name from topic
+# Transformation 1: Extract table name from topic (Debezium format: pg.public.tablename)
 transformed_df = transformed_df.withColumn(
     "source_table",
-    col("kafka_topic").substr(10, 100)  # Extract after "pg.public."
+    split(col("kafka_topic"), "\\.")[2]  # Split by "." and take 3rd element (index 2: data1, data2, data3)
 )
 
 # Transformation 2: Add partition flag
@@ -106,56 +103,29 @@ transformed_df.printSchema()
 print(f"\nWriting to MinIO Delta Lake at: {minio_path}")
 print("Note: Ensure MinIO bucket 'delta-lake' exists and is accessible")
 
-# Use foreachBatch to avoid serialization issues with direct Delta streaming
+# Use foreachBatch to write to Delta format
 # Store minio_path as a module-level variable to avoid closure serialization issues
 _minio_path = minio_path
 
 def write_to_delta(batch_df, batch_id):
-    """Write each batch to Delta format using workaround for serialization issues"""
+    """Write each batch to Delta format in MinIO"""
     try:
-        # Get SparkSession from DataFrame
-        spark_session = batch_df.sql_ctx.sparkSession
-        
-        # Workaround: Write to temporary Parquet location first, then convert to Delta
-        # This avoids the serialization issue with Delta Lake 3.0.0 + Spark 3.5.0
-        temp_parquet_path = f"{_minio_path}/_temp_parquet/batch_{batch_id}"
-        
-        # Write to Parquet first (no Delta involved, avoids serialization issue)
-        batch_df.write \
-            .format("parquet") \
-            .mode("overwrite") \
-            .save(temp_parquet_path)
-        
-        # Now configure Delta and convert Parquet to Delta
-        spark_session.conf.set("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
-        spark_session.conf.set("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
-        
-        # Read the Parquet data and write as Delta
-        temp_df = spark_session.read.format("parquet").load(temp_parquet_path)
-        temp_df.write \
-            .format("delta") \
-            .mode("append") \
-            .option("mergeSchema", "true") \
-            .save(_minio_path)
-        
-        # Clean up temp Parquet files
-        try:
-            from pyspark.sql import SparkSession
-            fs = spark_session._jvm.org.apache.hadoop.fs.FileSystem.get(
-                spark_session._jsc.hadoopConfiguration()
-            )
-            temp_path = spark_session._jvm.org.apache.hadoop.fs.Path(temp_parquet_path)
-            if fs.exists(temp_path):
-                fs.delete(temp_path, True)
-        except:
-            pass  # Ignore cleanup errors
-        
-        print(f"Batch {batch_id} written successfully to Delta Lake (via Parquet workaround)")
+        row_count = batch_df.count()
+        if row_count > 0:
+            # Write directly to Delta format
+            batch_df.write \
+                .format("delta") \
+                .mode("append") \
+                .option("mergeSchema", "true") \
+                .save(_minio_path)
+            print(f"Batch {batch_id}: Successfully wrote {row_count} rows to Delta Lake")
+        else:
+            print(f"Batch {batch_id}: No new data to write")
     except Exception as e:
         print(f"Error writing batch {batch_id}: {e}")
         import traceback
         traceback.print_exc()
-        # Don't raise - let streaming continue to see if subsequent batches work
+        # Don't raise - let streaming continue
         pass
 
 # Use a local checkpoint location (not in S3) to avoid serialization issues

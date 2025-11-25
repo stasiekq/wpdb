@@ -18,6 +18,12 @@ services:
       - pgdata:/var/lib/postgresql/data
     networks:
       - data_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pguser}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
@@ -85,11 +91,15 @@ services:
 
       CONNECT_PLUGIN_PATH: /kafka/connect
     depends_on:
-      - kafka
-      - schema-registry
-      - postgres
+      kafka:
+        condition: service_started
+      schema-registry:
+        condition: service_started
+      postgres:
+        condition: service_healthy
     networks:
       - data_net
+    restart: unless-stopped
 
   kafka-tools:
     image: confluentinc/cp-kafka:7.5.0
@@ -115,11 +125,16 @@ services:
       - "7077:7077"
     volumes:
       - ./src/task4/spark_streaming.py:/opt/spark/apps/spark_streaming.py
+      - ./src/task5/spark_delta_writer.py:/opt/spark/apps/spark_delta_writer.py
+      - ./src/task5/read_delta.py:/opt/spark/apps/read_delta.py
     depends_on:
-      - kafka
-      - schema-registry
+      kafka:
+        condition: service_started
+      schema-registry:
+        condition: service_started
     networks:
       - data_net
+    restart: unless-stopped
 
   spark-worker:
     image: apache/spark:3.5.1
@@ -133,12 +148,36 @@ services:
     ports:
       - "8082:8081"
     depends_on:
-      - spark
+      spark:
+        condition: service_started
     networks:
       - data_net
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"  # S3 API
+      - "9001:9001"  # Console UI
+    volumes:
+      - minio_data:/data
+    networks:
+      - data_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    restart: unless-stopped
 
 volumes:
   pgdata:
+  minio_data:
 
 networks:
   data_net:
