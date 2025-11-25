@@ -102,7 +102,7 @@ services:
       - data_net
 
   spark:
-    image: apache/spark:3.5.0
+    image: apache/spark:3.5.1
     container_name: spark
     entrypoint: ["/opt/spark/bin/spark-class"]
     command: ["org.apache.spark.deploy.master.Master", "-h", "spark"]
@@ -122,7 +122,7 @@ services:
       - data_net
 
   spark-worker:
-    image: apache/spark:3.5.0
+    image: apache/spark:3.5.1
     container_name: spark-worker
     entrypoint: ["/opt/spark/bin/spark-class"]
     command: ["org.apache.spark.deploy.worker.Worker", "spark://spark:7077"]
