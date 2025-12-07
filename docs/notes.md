@@ -38,3 +38,8 @@ kafka-topics.sh --bootstrap-server kafka:9092 --delete --topic wpdb.public.data1
 docker exec -it pg_task1 psql -U pguser -d business_db
 
 #i można SELECT * FROM public.data1 itp.
+
+docker exec spark /opt/spark/bin/spark-submit \
+  --master 'local[*]' \
+  --jars /opt/spark/jars/delta-spark_2.12-3.0.0.jar,/opt/spark/jars/delta-storage-3.0.0.jar,/opt/spark/jars/hadoop-aws-3.3.4.jar,/opt/spark/jars/aws-java-sdk-bundle-1.12.262.jar \
+  /opt/spark/apps/read_delta.py
